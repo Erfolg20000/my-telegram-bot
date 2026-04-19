@@ -10,7 +10,9 @@ OPENROUTER_KEY = "sk-or-v1-c3018b9151e98a1cc1974804e9f3579ed81fd97e582bbe361eb6a
 app = Flask(__name__)
 
 # Список моделей для автоматического перебора
+# Kimi K2.5 в приоритете (ключ уже добавлен в BYOK)
 MODELS = [
+    "moonshotai/kimi-k2.5",                     # Kimi K2.5 через твой BYOK ключ
     "openrouter/free",
     "openai/gpt-3.5-turbo",
     "google/gemini-2.0-flash-exp:free",
@@ -37,7 +39,8 @@ def ask_ai(text):
             
             if "choices" in result and len(result["choices"]) > 0:
                 return result["choices"][0]["message"]["content"]
-        except:
+        except Exception as e:
+            print(f"Модель {model} не ответила: {e}")
             continue  # Пробуем следующую модель
     
     return "❌ Все модели временно недоступны. Попробуй через минуту."
@@ -50,7 +53,8 @@ def send_message(chat_id, text):
         print(f"Ошибка отправки: {e}")
 
 def run_bot():
-    print("🚀 Бот запущен. Автоматический перебор моделей...")
+    print("🚀 Бот запущен. Приоритетная модель: Kimi K2.5")
+    print(f"📋 Всего моделей в списке: {len(MODELS)}")
     offset = 0
     while True:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
@@ -71,7 +75,7 @@ def run_bot():
 
 @app.route('/')
 def index():
-    return "Бот работает!", 200
+    return "Бот работает! Приоритетная модель: Kimi K2.5", 200
 
 @app.route('/health')
 def health():
