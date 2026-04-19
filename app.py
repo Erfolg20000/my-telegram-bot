@@ -12,7 +12,7 @@ app = Flask(__name__)
 def ask_ai(text):
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"}
-    data = {"model": "google/gemini-2.0-flash-exp:free", "messages": [{"role": "user", "content": text}]}
+    data = {"model": "meta-llama/llama-3.2-3b-instruct:free", "messages": [{"role": "user", "content": text}]}
     try:
         response = requests.post(url, json=data, headers=headers)
         return response.json()["choices"][0]["message"]["content"]
