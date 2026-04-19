@@ -11,11 +11,21 @@ app = Flask(__name__)
 
 def ask_ai(text):
     url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"}
-    data = {"model": "meta-llama/llama-3.2-3b-instruct:free", "messages": [{"role": "user", "content": text}]}
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "meta-llama/llama-3.2-3b-instruct:free",
+        "messages": [{"role": "user", "content": text}]
+    }
     try:
         response = requests.post(url, json=data, headers=headers)
-        return response.json()["choices"][0]["message"]["content"]
+        result = response.json()
+        if "choices" in result:
+            return result["choices"][0]["message"]["content"]
+        else:
+            return f"Ошибка: {result}"
     except Exception as e:
         return f"Ошибка API: {e}"
 
@@ -24,7 +34,7 @@ def send_message(chat_id, text):
     requests.post(url, json={"chat_id": chat_id, "text": text})
 
 def run_bot():
-    print("Бот запущен и слушает сообщения...")
+    print("Бот запущен с Llama 3.2. Жду сообщения...")
     offset = 0
     while True:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
@@ -37,6 +47,7 @@ def run_bot():
                     user_text = update["message"]["text"]
                     print(f"Получено: {user_text}")
                     reply = ask_ai(user_text)
+                    print(f"Ответ: {reply[:100]}...")
                     send_message(chat_id, reply)
         except Exception as e:
             print(f"Ошибка бота: {e}")
