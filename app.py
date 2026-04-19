@@ -9,47 +9,38 @@ OPENROUTER_KEY = "sk-or-v1-c3018b9151e98a1cc1974804e9f3579ed81fd97e582bbe361eb6a
 
 app = Flask(__name__)
 
+# Список моделей для автоматического перебора
+MODELS = [
+    "openrouter/free",
+    "openai/gpt-3.5-turbo",
+    "google/gemini-2.0-flash-exp:free",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "microsoft/phi-3.5-mini-128k-instruct:free",
+    "qwen/qwen-2.5-7b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+]
+
 def ask_ai(text):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    
-    # Критически важно: OpenRouter требует эти заголовки, иначе будет ошибка [citation:5]
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://my-telegram-bot.onrender.com", 
-        "X-Title": "Telegram AI Bot"
-    }
-    
-    data = {
-        "model": "openrouter/free",
-        "messages": [{"role": "user", "content": text}]
-    }
-    
-    try:
-        response = requests.post(url, json=data, headers=headers)
-        
-        # === НАЧАЛО ДИАГНОСТИКИ ===
-        # Если сервер вернул не 200, покажем точную причину [citation:7][citation:10]
-        if response.status_code != 200:
-            error_detail = response.json()
-            err_msg = error_detail.get('error', {}).get('message', 'Неизвестная ошибка')
-            return f"❌ Ошибка API ({response.status_code}): {err_msg}"
-        
-        # Парсим результат
-        result = response.json()
-        
-        # Если поле choices отсутствует или пустое — сообщаем об этом [citation:4]
-        if "choices" not in result or not result["choices"]:
-            return f"⚠️ Сервер OpenAI вернул пустой ответ. Попробуй написать ещё раз."
+    for model in MODELS:
+        try:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {OPENROUTER_KEY}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": model,
+                "messages": [{"role": "user", "content": text}]
+            }
+            response = requests.post(url, json=data, headers=headers, timeout=30)
+            result = response.json()
             
-        # Всё хорошо, возвращаем ответ
-        return result["choices"][0]["message"]["content"]
-        # === КОНЕЦ ДИАГНОСТИКИ ===
-        
-    except requests.exceptions.RequestException as e:
-        return f"🌐 Нет связи с API: {e}"
-    except Exception as e:
-        return f"💥 Внутренняя ошибка: {e}"
+            if "choices" in result and len(result["choices"]) > 0:
+                return result["choices"][0]["message"]["content"]
+        except:
+            continue  # Пробуем следующую модель
+    
+    return "❌ Все модели временно недоступны. Попробуй через минуту."
 
 def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -59,7 +50,7 @@ def send_message(chat_id, text):
         print(f"Ошибка отправки: {e}")
 
 def run_bot():
-    print("🚀 Бот запущен и слушает сообщения...")
+    print("🚀 Бот запущен. Автоматический перебор моделей...")
     offset = 0
     while True:
         url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/getUpdates"
@@ -71,13 +62,11 @@ def run_bot():
                     chat_id = update["message"]["chat"]["id"]
                     user_text = update["message"]["text"]
                     print(f"📩 Получено: {user_text}")
-                    
                     reply = ask_ai(user_text)
                     print(f"🤖 Ответ: {reply[:100]}...")
-                    
                     send_message(chat_id, reply)
         except Exception as e:
-            print(f"⚠️ Ошибка в цикле бота: {e}")
+            print(f"⚠️ Ошибка: {e}")
         time.sleep(1)
 
 @app.route('/')
